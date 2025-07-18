@@ -1,0 +1,107 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Game Susun Kata Hewan</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    img {
+      width: 200px;
+      height: auto;
+      margin-bottom: 20px;
+    }
+
+    .letters {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .letter {
+      padding: 10px 15px;
+      font-size: 24px;
+      background-color: #fff;
+      border: 2px solid #333;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .answer {
+      margin: 20px 0;
+      font-size: 28px;
+      min-height: 40px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    #result {
+      font-size: 22px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Game Susun Kata: Hewan</h1>
+  <img id="animalImage" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Tiger_in_Ranthambhore.jpg/640px-Tiger_in_Ranthambhore.jpg" alt="Hewan">
+
+  <div class="letters" id="lettersContainer"></div>
+  <div class="answer" id="userAnswer"></div>
+
+  <button onclick="checkAnswer()">Cek Jawaban</button>
+  <p id="result"></p>
+
+  <script>
+    const animal = {
+      name: "HARIMAU",
+      image: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Tiger_in_Ranthambhore.jpg/640px-Tiger_in_Ranthambhore.jpg"
+    };
+
+    const shuffled = animal.name.split('').sort(() => 0.5 - Math.random());
+
+    const lettersContainer = document.getElementById("lettersContainer");
+    const userAnswer = document.getElementById("userAnswer");
+    const result = document.getElementById("result");
+    const animalImage = document.getElementById("animalImage");
+
+    animalImage.src = animal.image;
+
+    let currentAnswer = [];
+
+    shuffled.forEach((letter) => {
+      const span = document.createElement("span");
+      span.textContent = letter;
+      span.className = "letter";
+      span.onclick = () => {
+        currentAnswer.push(letter);
+        userAnswer.textContent = currentAnswer.join('');
+        span.style.visibility = "hidden";
+      };
+      lettersContainer.appendChild(span);
+    });
+
+    function checkAnswer() {
+      if (currentAnswer.join('') === animal.name) {
+        result.textContent = "✅ Benar! Itu adalah HARIMAU.";
+        result.style.color = "green";
+      } else {
+        result.textContent = "❌ Salah. Coba lagi!";
+        result.style.color = "red";
+      }
+    }
+  </script>
+</body>
+</html>
