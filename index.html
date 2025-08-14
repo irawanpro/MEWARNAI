@@ -1,292 +1,201 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <title>Game Mewarnai Buah</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <style>
-    :root { --toolbar-h: 88px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Game Mewarnai Buah</title>
+<style>
     html, body {
-      margin: 0; padding: 0; height: 100%;
-      background: #fff;
-      /* JANGAN disable touch di body supaya tombol tetap bisa ditekan */
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #f0f0f0;
+        touch-action: none;
     }
-    /* Area kanvas: fullscreen, sisakan toolbar bawah */
-    #stage {
-      position: fixed;
-      inset: 0 0 var(--toolbar-h) 0;
-      background: #fff;
-      overflow: hidden;
-      /* Disable gesture hanya di area kanvas */
-      touch-action: none;
+    #gameContainer {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    #canvasWrapper {
+        position: relative;
+        flex: 1;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
     }
     canvas {
-      position: absolute; left: 0; top: 0;
-      width: 100%; height: 100%;
-      display: block;
-    }
-    #outlineCanvas { pointer-events: none; } /* biar sentuhan ke paintCanvas */
-
-    /* Tombol atas */
-    #topbar {
-      position: fixed; left: 0; right: 0; top: 10px;
-      display: flex; gap: 8px; justify-content: center; align-items: center;
-      z-index: 9999; pointer-events: auto; touch-action: manipulation;
-    }
-    .btn {
-      appearance: none; border: none;
-      background: #ff7a00; color: #fff;
-      padding: 10px 14px; border-radius: 10px;
-      font-weight: 700; font-size: 14px;
-    }
-    .btn:active { transform: scale(0.98); }
-
-    #fruitName {
-      position: fixed; top: 10px; right: 10px;
-      z-index: 9999; pointer-events: none;
-      font: 700 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: rgba(255,255,255,0.9);
-      padding: 8px 10px; border-radius: 10px; border: 1px solid #eee;
-      max-width: 40vw; text-align: center;
-    }
-
-    /* Toolbar bawah (palet + ukuran kuas) */
-    #toolbar {
-      position: fixed; left: 0; right: 0; bottom: 0; height: var(--toolbar-h);
-      background: #f7f7f7; border-top: 1px solid #e7e7e7;
-      display: grid; grid-template-columns: auto 1fr auto; gap: 10px;
-      align-items: center; padding: 10px 12px; box-sizing: border-box;
-      z-index: 9999; pointer-events: auto; touch-action: manipulation;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        position: absolute;
+        max-width: 100%;
+        max-height: 100%;
     }
     #palette {
-      display: flex; gap: 10px; overflow-x: auto; padding: 4px 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 5px;
+        background: #ddd;
     }
-    .swatch {
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 2px solid #222; flex: 0 0 auto;
+    .colorBtn {
+        width: 30px;
+        height: 30px;
+        margin: 3px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        cursor: pointer;
     }
-    .swatch.selected { outline: 3px solid #9e9e9e; }
-    #brushSize { width: 120px; }
-  </style>
+    #controls {
+        display: flex;
+        justify-content: center;
+        padding: 10px;
+        background: #ccc;
+    }
+    button {
+        margin: 0 5px;
+        padding: 8px 16px;
+        font-size: 16px;
+        border: none;
+        border-radius: 6px;
+        background: #4CAF50;
+        color: white;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #45a049;
+    }
+</style>
 </head>
 <body>
 
-  <!-- Tombol atas -->
-  <div id="topbar">
-    <button id="prevBtn" class="btn">Prev</button>
-    <button id="resetBtn" class="btn" style="background:#d32f2f">Reset</button>
-    <button id="nextBtn" class="btn">Next</button>
-  </div>
-  <div id="fruitName">Apel</div>
+<div id="gameContainer">
+    <div id="canvasWrapper">
+        <canvas id="colorCanvas"></canvas>
+        <canvas id="outlineCanvas"></canvas>
+    </div>
+    <div id="palette"></div>
+    <div id="controls">
+        <button id="prevBtn">Prev</button>
+        <button id="resetBtn">Reset</button>
+        <button id="nextBtn">Next</button>
+    </div>
+</div>
 
-  <!-- Area gambar: dua kanvas bertumpuk -->
-  <div id="stage">
-    <canvas id="paintCanvas"></canvas>
-    <canvas id="outlineCanvas"></canvas>
-  </div>
+<script>
+const fruits = [
+    "apel.png", "jeruk.png", "anggur.png", "kiwi_emas.png", "pisang.png",
+    "pir.png", "mangga.png", "nanas.png", "semangka.png", "pepaya.png",
+    "melon.png", "alpukat.png", "timun.png", "terong.png", "labu_siam.png",
+    "cabai.png", "tomat.png", "paprika.png", "zukini.png", "kentang.png"
+].map(f => "assets/images/" + f);
 
-  <!-- Toolbar bawah -->
-  <div id="toolbar">
-    <div style="font-weight:700; padding:0 6px;">Warna</div>
-    <div id="palette" aria-label="Palet Warna"></div>
-    <input id="brushSize" type="range" min="6" max="48" step="2" value="18" />
-  </div>
+const colorCanvas = document.getElementById("colorCanvas");
+const outlineCanvas = document.getElementById("outlineCanvas");
+const colorCtx = colorCanvas.getContext("2d");
+const outlineCtx = outlineCanvas.getContext("2d");
 
-  <script>
-    // ====== Data buah (20 item) ======
-    const fruitList = [
-      { name: "Apel",      src: "assets/images/apel.png" },
-      { name: "Jeruk",     src: "assets/images/jeruk.png" },
-      { name: "Anggur",    src: "assets/images/anggur.png" },
-      { name: "Kiwi Emas", src: "assets/images/kiwi_emas.png" },
-      { name: "Pisang",    src: "assets/images/pisang.png" },
-      { name: "Pir",       src: "assets/images/pir.png" },
-      { name: "Mangga",    src: "assets/images/mangga.png" },
-      { name: "Nanas",     src: "assets/images/nanas.png" },
-      { name: "Semangka",  src: "assets/images/semangka.png" },
-      { name: "Pepaya",    src: "assets/images/pepaya.png" },
-      { name: "Melon",     src: "assets/images/melon.png" },
-      { name: "Alpukat",   src: "assets/images/alpukat.png" },
-      { name: "Timun",     src: "assets/images/timun.png" },
-      { name: "Terong",    src: "assets/images/terong.png" },
-      { name: "Labu Siam", src: "assets/images/labu_siam.png" },
-      { name: "Cabai",     src: "assets/images/cabai.png" },
-      { name: "Tomat",     src: "assets/images/tomat.png" },
-      { name: "Paprika",   src: "assets/images/paprika.png" },
-      { name: "Zukini",    src: "assets/images/zukini.png" },
-      { name: "Kentang",   src: "assets/images/kentang.png" }
-    ];
+let currentFruitIndex = 0;
+let isDrawing = false;
+let currentColor = "#000000";
+let lastX = 0, lastY = 0;
 
-    // ====== Elemen ======
-    const paintCanvas   = document.getElementById('paintCanvas');
-    const outlineCanvas = document.getElementById('outlineCanvas');
-    const paintCtx      = paintCanvas.getContext('2d');
-    const outlineCtx    = outlineCanvas.getContext('2d');
+// Resize canvases to fill wrapper
+function resizeCanvas() {
+    const wrapper = document.getElementById("canvasWrapper");
+    const w = wrapper.clientWidth;
+    const h = wrapper.clientHeight;
+    colorCanvas.width = outlineCanvas.width = w;
+    colorCanvas.height = outlineCanvas.height = h;
+    loadFruit(currentFruitIndex);
+}
+window.addEventListener("resize", resizeCanvas);
 
-    const fruitNameEl   = document.getElementById('fruitName');
-    const prevBtn       = document.getElementById('prevBtn');
-    const nextBtn       = document.getElementById('nextBtn');
-    const resetBtn      = document.getElementById('resetBtn');
-    const paletteEl     = document.getElementById('palette');
-    const brushSizeEl   = document.getElementById('brushSize');
+// Load fruit outline image
+function loadFruit(index) {
+    colorCtx.clearRect(0, 0, colorCanvas.width, colorCanvas.height);
+    outlineCtx.clearRect(0, 0, outlineCanvas.width, outlineCanvas.height);
+    const img = new Image();
+    img.src = fruits[index];
+    img.onload = () => {
+        outlineCtx.drawImage(img, 0, 0, outlineCanvas.width, outlineCanvas.height);
+    };
+}
 
-    // ====== State ======
-    let currentFruitIndex = 0;
-    let drawing = false;
-    let lastX = 0, lastY = 0;
-    let brushColor = '#ff3b30';
-    let brushSize  = parseInt(brushSizeEl.value, 10);
+// Drawing events
+function startDrawing(x, y) {
+    isDrawing = true;
+    lastX = x;
+    lastY = y;
+}
+function draw(x, y) {
+    if (!isDrawing) return;
+    colorCtx.strokeStyle = currentColor;
+    colorCtx.lineWidth = 20;
+    colorCtx.lineCap = "round";
+    colorCtx.beginPath();
+    colorCtx.moveTo(lastX, lastY);
+    colorCtx.lineTo(x, y);
+    colorCtx.stroke();
+    lastX = x;
+    lastY = y;
+}
+function stopDrawing() {
+    isDrawing = false;
+}
 
-    // Palet warna
-    const paletteColors = [
-      '#ff3b30','#ff9500','#ffcc00','#34c759','#0a84ff','#af52de',
-      '#6d6d6d','#000000','#ffffff','#a0522d'
-    ];
+// Mouse events
+colorCanvas.addEventListener("mousedown", e => startDrawing(e.offsetX, e.offsetY));
+colorCanvas.addEventListener("mousemove", e => draw(e.offsetX, e.offsetY));
+colorCanvas.addEventListener("mouseup", stopDrawing);
+colorCanvas.addEventListener("mouseout", stopDrawing);
 
-    // ====== Utility ======
-    function fitCanvases() {
-      const rect = document.getElementById('stage').getBoundingClientRect();
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
+// Touch events
+colorCanvas.addEventListener("touchstart", e => {
+    const rect = colorCanvas.getBoundingClientRect();
+    startDrawing(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+});
+colorCanvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    const rect = colorCanvas.getBoundingClientRect();
+    draw(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+});
+colorCanvas.addEventListener("touchend", stopDrawing);
 
-      [paintCanvas, outlineCanvas].forEach(cv => {
-        cv.width  = Math.floor(rect.width * dpr);
-        cv.height = Math.floor(rect.height * dpr);
-        cv.style.width  = rect.width + 'px';
-        cv.style.height = rect.height + 'px';
-      });
-      paintCtx.setTransform(1,0,0,1,0,0);
-      outlineCtx.setTransform(1,0,0,1,0,0);
-      paintCtx.scale(dpr, dpr);
-      outlineCtx.scale(dpr, dpr);
+// Palette colors
+const colors = ["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF",
+    "#FFA500", "#800080", "#008000", "#A52A2A", "#808000", "#FFC0CB", "#FFFFFF"];
+const paletteDiv = document.getElementById("palette");
+colors.forEach(col => {
+    const btn = document.createElement("div");
+    btn.className = "colorBtn";
+    btn.style.background = col;
+    btn.addEventListener("click", () => currentColor = col);
+    paletteDiv.appendChild(btn);
+});
 
-      // redraw outline pada ukuran baru
-      drawOutline();
-    }
+// Buttons
+document.getElementById("nextBtn").addEventListener("click", () => {
+    currentFruitIndex = (currentFruitIndex + 1) % fruits.length;
+    loadFruit(currentFruitIndex);
+});
+document.getElementById("prevBtn").addEventListener("click", () => {
+    currentFruitIndex = (currentFruitIndex - 1 + fruits.length) % fruits.length;
+    loadFruit(currentFruitIndex);
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+    colorCtx.clearRect(0, 0, colorCanvas.width, colorCanvas.height);
+});
 
-    const outlineImg = new Image();
-    outlineImg.onload = drawOutline;
+// Init
+resizeCanvas();
+</script>
 
-    function drawOutline() {
-      // Clear outline layer
-      const w = outlineCanvas.clientWidth;
-      const h = outlineCanvas.clientHeight;
-      outlineCtx.clearRect(0, 0, w, h);
-
-      if (!outlineImg.naturalWidth) return;
-
-      // Fit "contain" di area stage
-      const imgW = outlineImg.naturalWidth, imgH = outlineImg.naturalHeight;
-      const stageW = outlineCanvas.clientWidth, stageH = outlineCanvas.clientHeight;
-      const imgRatio = imgW / imgH, stageRatio = stageW / stageH;
-
-      let drawW, drawH, dx, dy;
-      if (imgRatio > stageRatio) { // gambar lebih lebar
-        drawW = stageW; drawH = drawW / imgRatio;
-        dx = 0; dy = (stageH - drawH) / 2;
-      } else {
-        drawH = stageH; drawW = drawH * imgRatio;
-        dy = 0; dx = (stageW - drawW) / 2;
-      }
-      outlineCtx.drawImage(outlineImg, dx, dy, drawW, drawH);
-    }
-
-    function clearPaint() {
-      paintCtx.clearRect(0, 0, paintCanvas.clientWidth, paintCanvas.clientHeight);
-    }
-
-    function loadFruit(index) {
-      currentFruitIndex = (index + fruitList.length) % fruitList.length;
-      fruitNameEl.textContent = fruitList[currentFruitIndex].name;
-      clearPaint();                       // hapus warna
-      outlineImg.src = fruitList[currentFruitIndex].src; // redraw outline saat onload
-    }
-
-    // ====== Palet ======
-    function buildPalette() {
-      paletteEl.innerHTML = '';
-      paletteColors.forEach((c, i) => {
-        const sw = document.createElement('button');
-        sw.className = 'swatch' + (i===0?' selected':'');
-        sw.style.background = c;
-        sw.addEventListener('click', (e) => {
-          e.stopPropagation(); brushColor = c;
-          document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('selected'));
-          sw.classList.add('selected');
-        });
-        sw.addEventListener('touchend', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          sw.click();
-        }, { passive:false });
-        paletteEl.appendChild(sw);
-      });
-    }
-
-    // ====== Menggambar di paintCanvas ======
-    function getPos(e) {
-      const rect = paintCanvas.getBoundingClientRect();
-      let x, y;
-      if (e.touches && e.touches.length) {
-        x = e.touches[0].clientX - rect.left;
-        y = e.touches[0].clientY - rect.top;
-      } else {
-        x = e.clientX - rect.left;
-        y = e.clientY - rect.top;
-      }
-      return { x, y };
-    }
-
-    function startDraw(e) {
-      e.preventDefault();
-      drawing = true;
-      paintCtx.beginPath();
-      const p = getPos(e);
-      paintCtx.moveTo(p.x, p.y);
-      lastX = p.x; lastY = p.y;
-    }
-    function moveDraw(e) {
-      if (!drawing) return;
-      const p = getPos(e);
-      paintCtx.lineCap = 'round';
-      paintCtx.lineJoin = 'round';
-      paintCtx.strokeStyle = brushColor;
-      paintCtx.lineWidth = brushSize;
-      paintCtx.lineTo(p.x, p.y);
-      paintCtx.stroke();
-      lastX = p.x; lastY = p.y;
-    }
-    function endDraw(e) {
-      if (!drawing) return;
-      drawing = false;
-      paintCtx.closePath();
-    }
-
-    // Event kanvas (sentuh & mouse)
-    paintCanvas.addEventListener('touchstart', startDraw, { passive:false });
-    paintCanvas.addEventListener('touchmove',  moveDraw,  { passive:false });
-    paintCanvas.addEventListener('touchend',   endDraw,   { passive:false });
-    paintCanvas.addEventListener('touchcancel',endDraw,   { passive:false });
-    paintCanvas.addEventListener('mousedown',  startDraw);
-    window.addEventListener('mousemove',       moveDraw);
-    window.addEventListener('mouseup',         endDraw);
-
-    // ====== Tombol: click + touchend (agar pasti jalan di HP) ======
-    function bindButton(el, handler) {
-      el.addEventListener('click', (e)=>{ e.stopPropagation(); handler(); });
-      el.addEventListener('touchend', (e)=>{ e.preventDefault(); e.stopPropagation(); handler(); }, { passive:false });
-    }
-    bindButton(nextBtn, ()=> loadFruit(currentFruitIndex + 1));
-    bindButton(prevBtn, ()=> loadFruit(currentFruitIndex - 1));
-    bindButton(resetBtn,()=> clearPaint()); // reset = hapus warna, outline tetap
-
-    // ====== Brush size ======
-    brushSizeEl.addEventListener('input', ()=> { brushSize = parseInt(brushSizeEl.value,10); });
-
-    // ====== Init ======
-    buildPalette();
-    window.addEventListener('resize', fitCanvases);
-    fitCanvases();
-    loadFruit(0);
-  </script>
 </body>
 </html>
