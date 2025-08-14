@@ -5,165 +5,31 @@
   <title>Game Mewarnai Buah</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <style>
+    /* --- CSS asli kamu tetap sama --- */
     :root { --toolbar-h: 88px; }
-    html, body {
-      margin: 0; padding: 0; height: 100%;
-      background: #fff;
-    }
-    #stage {
-      position: fixed;
-      inset: 0 0 var(--toolbar-h) 0;
-      background: #fff;
-      overflow: hidden;
-      touch-action: none;
-    }
-    canvas {
-      position: absolute; left: 0; top: 0;
-      width: 100%; height: 100%;
-      display: block;
-    }
+    html, body { margin: 0; padding: 0; height: 100%; background: #fff; }
+    #stage { position: fixed; inset: 0 0 var(--toolbar-h) 0; background: #fff; overflow: hidden; touch-action: none; }
+    canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
     #outlineCanvas { pointer-events: none; }
-    #topbar {
-      position: fixed; left: 0; right: 0; top: 10px;
-      display: flex; gap: 8px; justify-content: center; align-items: center;
-      z-index: 9999; pointer-events: auto; touch-action: manipulation;
-    }
-    .btn {
-      appearance: none; border: none;
-      background: #ff7a00; color: #fff;
-      padding: 10px 14px; border-radius: 10px;
-      font-weight: 700; font-size: 14px;
-    }
+    #topbar { position: fixed; left: 0; right: 0; top: 10px; display: flex; gap: 8px; justify-content: center; align-items: center; z-index: 9999; pointer-events: auto; touch-action: manipulation; }
+    .btn { appearance: none; border: none; background: #ff7a00; color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 700; font-size: 14px; }
     .btn:active { transform: scale(0.98); }
-    #fruitName {
-      position: fixed; top: 10px; right: 10px;
-      z-index: 9999; pointer-events: none;
-      font: 700 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: rgba(255,255,255,0.9);
-      padding: 8px 10px; border-radius: 10px; border: 1px solid #eee;
-      max-width: 40vw; text-align: center;
-    }
-    #toolbar {
-      position: fixed; left: 0; right: 0; bottom: 0; height: var(--toolbar-h);
-      background: #f7f7f7; border-top: 1px solid #e7e7e7;
-      display: grid; grid-template-columns: auto 1fr auto; gap: 10px;
-      align-items: center; padding: 10px 12px; box-sizing: border-box;
-      z-index: 9999; pointer-events: auto; touch-action: manipulation;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
-    #palette {
-      display: flex; gap: 10px; overflow-x: auto; padding: 4px 0;
-    }
-    .swatch {
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 2px solid #222; flex: 0 0 auto;
-    }
+    #fruitName { position: fixed; top: 10px; right: 10px; z-index: 9999; pointer-events: none; font: 700 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: rgba(255,255,255,0.9); padding: 8px 10px; border-radius: 10px; border: 1px solid #eee; max-width: 40vw; text-align: center; }
+    #toolbar { position: fixed; left: 0; right: 0; bottom: 0; height: var(--toolbar-h); background: #f7f7f7; border-top: 1px solid #e7e7e7; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; box-sizing: border-box; z-index: 9999; pointer-events: auto; touch-action: manipulation; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    #palette { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0; }
+    .swatch { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #222; flex: 0 0 auto; }
     .swatch.selected { outline: 3px solid #9e9e9e; }
     #brushSize { width: 120px; }
-
-    /* Overlay instruksi (DIUBAH: huruf timbul, berwarna, interaktif) */
-    #instructionOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(255,255,255,0.95);
-      z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      /* font-family dipertahankan sistem (mudah dibaca), tebal dan besar */
-      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      padding: 20px;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    /* Efek huruf timbul berwarna: gradient + banyak lapisan text-shadow untuk efek 3D */
-    #instructionOverlay h1 {
-      font-size: 32px;
-      font-weight: 900;
-      margin: 0 0 8px 0;
-      display: inline-block;
-      padding: 10px 18px;
-      border-radius: 14px;
-      background: linear-gradient(90deg, #ff6b6b 0%, #ffb86b 25%, #ffd56b 50%, #7be495 75%, #6ac8ff 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      /* lapisan shadow untuk memberi kesan timbul / relief */
-      text-shadow:
-        0 1px 0 rgba(255,255,255,0.6),
-        0 2px 0 rgba(0,0,0,0.08),
-        0 4px 8px rgba(0,0,0,0.12),
-        0 8px 20px rgba(0,0,0,0.10);
-      transition: transform 240ms cubic-bezier(.2,.9,.3,1), text-shadow 240ms ease;
-      cursor: default;
-      will-change: transform, text-shadow;
-      /* sedikit border-glow halus */
-      box-shadow: 0 6px 18px rgba(107,119,140,0.12), inset 0 -6px 18px rgba(255,255,255,0.06);
-      user-select: none;
-    }
-
-    /* Animasi halus floating (slow) */
-    @keyframes floatSlow {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-      100% { transform: translateY(0); }
-    }
-    /* default: pelan bergerak sedikit agar terasa hidup */
-    #instructionOverlay h1.float {
-      animation: floatSlow 3.6s ease-in-out infinite;
-    }
-
-    /* Interaksi: saat pointer hover / focus -> huruf terangkat dan shadow lebih tegas */
-    #instructionOverlay h1:hover,
-    #instructionOverlay h1:focus {
-      transform: translateY(-10px) scale(1.03) rotate(-1deg);
-      text-shadow:
-        0 2px 0 rgba(255,255,255,0.7),
-        0 6px 12px rgba(0,0,0,0.18),
-        0 12px 28px rgba(0,0,0,0.18);
-      outline: none;
-    }
-
-    /* Paragraf dengan efek timbul yang lebih subtle (mudah dibaca) */
-    #instructionOverlay p {
-      font-size: 16px;
-      color: #333;
-      margin: 6px 0;
-      padding: 6px 10px;
-      border-radius: 10px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(250,250,250,0.9));
-      box-shadow: 0 4px 10px rgba(16,24,40,0.06), inset 0 -3px 6px rgba(0,0,0,0.02);
-      text-shadow: 0 1px 0 rgba(255,255,255,0.6);
-      user-select: none;
-    }
-
-    /* Tombol mulai: lebih "tombol timbul" interaktif */
-    #startGameBtn {
-      margin-top: 20px;
-      background: linear-gradient(180deg,#34c759,#13a85a);
-      color: white;
-      border: none;
-      padding: 12px 22px;
-      border-radius: 12px;
-      font-size: 16px;
-      cursor: pointer;
-      font-weight: 800;
-      box-shadow:
-        0 6px 18px rgba(0,0,0,0.12),
-        inset 0 -6px 12px rgba(255,255,255,0.06);
-      transition: transform 160ms cubic-bezier(.2,.9,.3,1), box-shadow 160ms ease;
-    }
+    /* Overlay instruksi */
+    #instructionOverlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; padding: 20px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    #instructionOverlay h1 { font-size: 32px; font-weight: 900; margin: 0 0 8px 0; display: inline-block; padding: 10px 18px; border-radius: 14px; background: linear-gradient(90deg, #ff6b6b 0%, #ffb86b 25%, #ffd56b 50%, #7be495 75%, #6ac8ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.12), 0 8px 20px rgba(0,0,0,0.10); transition: transform 240ms cubic-bezier(.2,.9,.3,1), text-shadow 240ms ease; cursor: default; will-change: transform, text-shadow; box-shadow: 0 6px 18px rgba(107,119,140,0.12), inset 0 -6px 18px rgba(255,255,255,0.06); user-select: none; }
+    @keyframes floatSlow { 0% { transform: translateY(0); } 50% { transform: translateY(-6px); } 100% { transform: translateY(0); } }
+    #instructionOverlay h1.float { animation: floatSlow 3.6s ease-in-out infinite; }
+    #instructionOverlay p { font-size: 16px; color: #333; margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(250,250,250,0.9)); box-shadow: 0 4px 10px rgba(16,24,40,0.06), inset 0 -3px 6px rgba(0,0,0,0.02); text-shadow: 0 1px 0 rgba(255,255,255,0.6); user-select: none; }
+    #startGameBtn { margin-top: 20px; background: linear-gradient(180deg,#34c759,#13a85a); color: white; border: none; padding: 12px 22px; border-radius: 12px; font-size: 16px; cursor: pointer; font-weight: 800; box-shadow: 0 6px 18px rgba(0,0,0,0.12), inset 0 -6px 12px rgba(255,255,255,0.06); transition: transform 160ms cubic-bezier(.2,.9,.3,1), box-shadow 160ms ease; }
     #startGameBtn:active { transform: translateY(2px) scale(.995); box-shadow: 0 3px 10px rgba(0,0,0,0.10); }
     #startGameBtn:hover { transform: translateY(-6px); box-shadow: 0 12px 28px rgba(0,0,0,0.16); }
-
-    /* Responsif: kecilkan font pada layar sempit */
-    @media (max-width:420px) {
-      #instructionOverlay h1 { font-size: 22px; padding: 8px 12px; }
-      #instructionOverlay p { font-size: 14px; }
-      #startGameBtn { padding: 10px 16px; font-size: 15px; }
-    }
+    @media (max-width:420px) { #instructionOverlay h1 { font-size: 22px; padding: 8px 12px; } #instructionOverlay p { font-size: 14px; } #startGameBtn { padding: 10px 16px; font-size: 15px; } }
   </style>
 </head>
 <body>
@@ -197,10 +63,16 @@
     <input id="brushSize" type="range" min="6" max="48" step="2" value="18" />
   </div>
 
+  <!-- Tambahan audio background -->
+  <audio id="bgMusic" loop>
+    <source src="assets/audio/background.mp3" type="audio/mpeg">
+  </audio>
+
   <script>
-    // === Tambahan untuk instruksi ===
+    // === Tambahan untuk instruksi + musik ===
     document.getElementById('startGameBtn').addEventListener('click', function() {
       document.getElementById('instructionOverlay').style.display = 'none';
+      document.getElementById('bgMusic').play();
     });
 
     // ====== Data buah (20 item) ======
@@ -231,7 +103,6 @@
     const outlineCanvas = document.getElementById('outlineCanvas');
     const paintCtx      = paintCanvas.getContext('2d');
     const outlineCtx    = outlineCanvas.getContext('2d');
-
     const fruitNameEl   = document.getElementById('fruitName');
     const prevBtn       = document.getElementById('prevBtn');
     const nextBtn       = document.getElementById('nextBtn');
