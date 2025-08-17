@@ -5,237 +5,165 @@
   <title>Game Mewarnai Buah</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <style>
-    /* ... CSS kamu tetap sama persis ... */
+    :root { --toolbar-h: 88px; }
+    html, body {
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font-family: sans-serif;
+    }
+    #gameWrapper { position: relative; width: 100%; height: 100%; }
+    canvas {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: calc(100% - var(--toolbar-h));
+      touch-action: none;
+    }
+    #toolbar {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: var(--toolbar-h);
+      background: #eee; display: flex; align-items: center; justify-content: space-around;
+    }
+    .color-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 2px solid #333; cursor: pointer;
+    }
+    #fruitName {
+      position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.7); padding: 4px 12px; border-radius: 12px;
+      font-weight: bold;
+    }
+    #overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: white; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 10;
+    }
+    #overlay h1 { margin-bottom: 20px; }
+    #overlay button { padding: 10px 20px; font-size: 16px; }
   </style>
 </head>
 <body>
-
-  <!-- Overlay instruksi -->
-  <div id="instructionOverlay">
-    <h1 class="float" tabindex="0">Selamat Datang di Game Mewarnai Buah!</h1>
-    <p>Created by : GlowandGrow</p>
-    <p>Contact person : +6289629065679 / Rahma</p>
-    <button id="startGameBtn">Mulai Bermain</button>
+<div id="gameWrapper">
+  <div id="overlay">
+    <h1>Game Mewarnai Buah</h1>
+    <button onclick="startGame()">Mulai</button>
   </div>
-
-  <!-- Tombol atas -->
-  <div id="topbar">
-    <button id="prevBtn" class="btn">Prev</button>
-    <button id="resetBtn" class="btn" style="background:#d32f2f">Reset</button>
-    <button id="nextBtn" class="btn">Next</button>
-  </div>
-  <div id="fruitName">Apel</div>
-
-  <!-- Area gambar -->
-  <div id="stage">
-    <canvas id="paintCanvas"></canvas>
-    <canvas id="outlineCanvas"></canvas>
-  </div>
-
-  <!-- Toolbar bawah -->
+  <div id="fruitName"></div>
+  <canvas id="outlineCanvas"></canvas>
+  <canvas id="paintCanvas"></canvas>
   <div id="toolbar">
-    <div style="font-weight:700; padding:0 6px;">Warna</div>
-    <div id="palette" aria-label="Palet Warna"></div>
-    <input id="brushSize" type="range" min="6" max="48" step="2" value="18" />
+    <button onclick="prevFruit()">⏮</button>
+    <button onclick="clearPaint()">Clear</button>
+    <button onclick="nextFruit()">⏭</button>
+    <div id="colors"></div>
   </div>
+</div>
+<audio id="bgMusic" loop>
+  <source src="music.mp3" type="audio/mpeg">
+</audio>
+<script>
+  const fruits = [
+    { name: "Apel", src: "apel.png" },
+    { name: "Jeruk", src: "jeruk.png" },
+    { name: "Pisang", src: "pisang.png" }
+  ];
+  const colors = ["red","green","blue","yellow","orange","purple","brown","pink"];
+  let currentFruitIndex = 0;
+  let drawing = false;
+  let currentColor = "black";
+  const outlineCanvas = document.getElementById("outlineCanvas");
+  const paintCanvas = document.getElementById("paintCanvas");
+  const outlineCtx = outlineCanvas.getContext("2d");
+  const paintCtx = paintCanvas.getContext("2d");
+  const fruitNameEl = document.getElementById("fruitName");
+  const outlineImg = new Image();
+  const bgMusic = document.getElementById("bgMusic");
 
-  <!-- Tambahan audio background -->
-  <audio id="bgMusic" loop>
-    <source src="assets/audio/background.mp3" type="audio/mpeg">
-  </audio>
+  function resizeCanvas() {
+    outlineCanvas.width = paintCanvas.width = window.innerWidth;
+    outlineCanvas.height = paintCanvas.height = window.innerHeight - 88;
+    drawOutline();
+  }
+  window.onresize = resizeCanvas;
 
-  <script>
-    // === Musik start ===
-    document.getElementById('startGameBtn').addEventListener('click', function() {
-      document.getElementById('instructionOverlay').style.display = 'none';
-      document.getElementById('bgMusic').play();
-    });
+  function drawOutline() {
+    outlineCtx.clearRect(0, 0, outlineCanvas.width, outlineCanvas.height);
+    outlineCtx.drawImage(outlineImg, 0, 0, outlineCanvas.width, outlineCanvas.height);
+  }
 
-    // ====== Data buah ======
-    const fruitList = [
-      { name: "Apel",      src: "assets/images/apel.png" },
-      { name: "Jeruk",     src: "assets/images/jeruk.png" },
-      { name: "Anggur",    src: "assets/images/anggur.png" },
-      /* ... dst buah lain ... */
-    ];
-
-    const paintCanvas   = document.getElementById('paintCanvas');
-    const outlineCanvas = document.getElementById('outlineCanvas');
-    const paintCtx      = paintCanvas.getContext('2d');
-    const outlineCtx    = outlineCanvas.getContext('2d');
-    const fruitNameEl   = document.getElementById('fruitName');
-    const prevBtn       = document.getElementById('prevBtn');
-    const nextBtn       = document.getElementById('nextBtn');
-    const resetBtn      = document.getElementById('resetBtn');
-    const paletteEl     = document.getElementById('palette');
-    const brushSizeEl   = document.getElementById('brushSize');
-
-    let currentFruitIndex = 0;
-    let drawing = false;
-    let lastX = 0, lastY = 0;
-    let brushColor = '#ff3b30';
-    let brushSize  = parseInt(brushSizeEl.value, 10);
-
-    const paletteColors = [
-      '#ff3b30','#ff9500','#ffcc00','#34c759','#0a84ff','#af52de',
-      '#6d6d6d','#000000','#ffffff','#a0522d'
-    ];
-
-    function fitCanvases() {
-      const rect = document.getElementById('stage').getBoundingClientRect();
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-      [paintCanvas, outlineCanvas].forEach(cv => {
-        cv.width  = Math.floor(rect.width * dpr);
-        cv.height = Math.floor(rect.height * dpr);
-        cv.style.width  = rect.width + 'px';
-        cv.style.height = rect.height + 'px';
-      });
-      paintCtx.setTransform(1,0,0,1,0,0);
-      outlineCtx.setTransform(1,0,0,1,0,0);
-      paintCtx.scale(dpr, dpr);
-      outlineCtx.scale(dpr, dpr);
+  function loadFruit(index) {
+    currentFruitIndex = (index + fruits.length) % fruits.length;
+    fruitNameEl.textContent = fruits[currentFruitIndex].name;
+    clearPaint();
+    outlineImg.onload = () => {
       drawOutline();
-    }
 
-    const outlineImg = new Image();
-    outlineImg.onload = drawOutline;
+      // === Tambahan: Buat clipping mask di paintCanvas ===
+      paintCtx.restore?.(); // reset clip sebelumnya jika ada
+      paintCtx.save();
+      paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+      
+      // gambar outline sementara
+      paintCtx.drawImage(outlineImg, 0, 0, paintCanvas.width, paintCanvas.height);
+      const imgData = paintCtx.getImageData(0, 0, paintCanvas.width, paintCanvas.height);
+      paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
 
-    function drawOutline() {
-      const w = outlineCanvas.clientWidth;
-      const h = outlineCanvas.clientHeight;
-      outlineCtx.clearRect(0, 0, w, h);
-      if (!outlineImg.naturalWidth) return;
-      const imgW = outlineImg.naturalWidth, imgH = outlineImg.naturalHeight;
-      const stageW = outlineCanvas.clientWidth, stageH = outlineCanvas.clientHeight;
-      const imgRatio = imgW / imgH, stageRatio = stageW / stageH;
-      let drawW, drawH, dx, dy;
-      if (imgRatio > stageRatio) {
-        drawW = stageW; drawH = drawW / imgRatio;
-        dx = 0; dy = (stageH - drawH) / 2;
-      } else {
-        drawH = stageH; drawW = drawH * imgRatio;
-        dy = 0; dx = (stageW - drawW) / 2;
-      }
-      outlineCtx.drawImage(outlineImg, dx, dy, drawW, drawH);
-    }
-
-    function clearPaint() {
-      paintCtx.clearRect(0, 0, paintCanvas.clientWidth, paintCanvas.clientHeight);
-    }
-
-    function loadFruit(index) {
-      currentFruitIndex = (index + fruitList.length) % fruitList.length;
-      fruitNameEl.textContent = fruitList[currentFruitIndex].name;
-      clearPaint();
-      outlineImg.src = fruitList[currentFruitIndex].src;
-
-      // === Tambahan: siapkan mask dari PNG transparan ===
-      outlineImg.onload = () => {
-        drawOutline();
-
-        const maskCanvas = document.createElement('canvas');
-        maskCanvas.width = outlineCanvas.width;
-        maskCanvas.height = outlineCanvas.height;
-        const maskCtx = maskCanvas.getContext('2d');
-        maskCtx.drawImage(outlineImg, 0, 0, outlineCanvas.width, outlineCanvas.height);
-
-        const maskImg = new Image();
-        maskImg.src = maskCanvas.toDataURL();
-
-        maskImg.onload = () => {
-          paintCanvas.maskImg = maskImg;
-        };
-      };
-    }
-
-    function buildPalette() {
-      paletteEl.innerHTML = '';
-      paletteColors.forEach((c, i) => {
-        const sw = document.createElement('button');
-        sw.className = 'swatch' + (i===0?' selected':'');
-        sw.style.background = c;
-        sw.addEventListener('click', (e) => {
-          e.stopPropagation(); brushColor = c;
-          document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('selected'));
-          sw.classList.add('selected');
-        });
-        sw.addEventListener('touchend', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          sw.click();
-        }, { passive:false });
-        paletteEl.appendChild(sw);
-      });
-    }
-
-    function getPos(e) {
-      const rect = paintCanvas.getBoundingClientRect();
-      let x, y;
-      if (e.touches && e.touches.length) {
-        x = e.touches[0].clientX - rect.left;
-        y = e.touches[0].clientY - rect.top;
-      } else {
-        x = e.clientX - rect.left;
-        y = e.clientY - rect.top;
-      }
-      return { x, y };
-    }
-
-    function startDraw(e) {
-      e.preventDefault();
-      drawing = true;
       paintCtx.beginPath();
-      const p = getPos(e);
-      paintCtx.moveTo(p.x, p.y);
-      lastX = p.x; lastY = p.y;
-    }
-
-    function moveDraw(e) {
-      if (!drawing) return;
-      const p = getPos(e);
-      paintCtx.lineCap = 'round';
-      paintCtx.lineJoin = 'round';
-      paintCtx.strokeStyle = brushColor;
-      paintCtx.lineWidth = brushSize;
-      paintCtx.lineTo(p.x, p.y);
-      paintCtx.stroke();
-      lastX = p.x; lastY = p.y;
-    }
-
-    function endDraw(e) {
-      if (!drawing) return;
-      drawing = false;
-      paintCtx.closePath();
-
-      // === Tambahan: apply mask agar cat tetap di dalam buah ===
-      if (paintCanvas.maskImg) {
-        paintCtx.globalCompositeOperation = "destination-in";
-        paintCtx.drawImage(paintCanvas.maskImg, 0, 0, paintCanvas.width, paintCanvas.height);
-        paintCtx.globalCompositeOperation = "source-over";
+      for (let y = 0; y < imgData.height; y++) {
+        for (let x = 0; x < imgData.width; x++) {
+          let idx = (y * imgData.width + x) * 4 + 3; // alpha channel
+          if (imgData.data[idx] > 0) {
+            paintCtx.rect(x, y, 1, 1);
+          }
+        }
       }
-    }
+      paintCtx.clip(); // aktifkan mask
+    };
+    outlineImg.src = fruits[currentFruitIndex].src;
+  }
 
-    paintCanvas.addEventListener('touchstart', startDraw, { passive:false });
-    paintCanvas.addEventListener('touchmove',  moveDraw,  { passive:false });
-    paintCanvas.addEventListener('touchend',   endDraw,   { passive:false });
-    paintCanvas.addEventListener('touchcancel',endDraw,   { passive:false });
-    paintCanvas.addEventListener('mousedown',  startDraw);
-    window.addEventListener('mousemove',       moveDraw);
-    window.addEventListener('mouseup',         endDraw);
+  function prevFruit() { loadFruit(currentFruitIndex - 1); }
+  function nextFruit() { loadFruit(currentFruitIndex + 1); }
+  function clearPaint() { paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height); }
 
-    function bindButton(el, handler) {
-      el.addEventListener('click', (e)=>{ e.stopPropagation(); handler(); });
-      el.addEventListener('touchend', (e)=>{ e.preventDefault(); e.stopPropagation(); handler(); }, { passive:false });
-    }
-    bindButton(nextBtn, ()=> loadFruit(currentFruitIndex + 1));
-    bindButton(prevBtn, ()=> loadFruit(currentFruitIndex - 1));
-    bindButton(resetBtn,()=> clearPaint());
+  function startDraw(e) {
+    drawing = true;
+    paintCtx.beginPath();
+    paintCtx.moveTo(getX(e), getY(e));
+  }
+  function draw(e) {
+    if (!drawing) return;
+    paintCtx.lineTo(getX(e), getY(e));
+    paintCtx.strokeStyle = currentColor;
+    paintCtx.lineWidth = 10;
+    paintCtx.lineCap = "round";
+    paintCtx.lineJoin = "round";
+    paintCtx.stroke();
+  }
+  function endDraw(e) { drawing = false; paintCtx.closePath(); }
+  function getX(e) { return e.touches ? e.touches[0].clientX : e.clientX; }
+  function getY(e) { return e.touches ? e.touches[0].clientY : e.clientY; }
 
-    brushSizeEl.addEventListener('input', ()=> { brushSize = parseInt(brushSizeEl.value,10); });
+  paintCanvas.addEventListener("mousedown", startDraw);
+  paintCanvas.addEventListener("mousemove", draw);
+  paintCanvas.addEventListener("mouseup", endDraw);
+  paintCanvas.addEventListener("touchstart", startDraw);
+  paintCanvas.addEventListener("touchmove", draw);
+  paintCanvas.addEventListener("touchend", endDraw);
 
-    buildPalette();
-    window.addEventListener('resize', fitCanvases);
-    fitCanvases();
-    loadFruit(0);
-  </script>
+  function buildColors() {
+    const colorDiv = document.getElementById("colors");
+    colors.forEach(c => {
+      let btn = document.createElement("div");
+      btn.className = "color-btn";
+      btn.style.background = c;
+      btn.onclick = () => currentColor = c;
+      colorDiv.appendChild(btn);
+    });
+  }
+
+  function startGame() {
+    document.getElementById("overlay").style.display = "none";
+    resizeCanvas();
+    buildColors();
+    loadFruit(currentFruitIndex);
+    bgMusic.play();
+  }
+</script>
 </body>
 </html>
