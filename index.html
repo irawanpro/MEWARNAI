@@ -5,116 +5,112 @@
   <title>Game Mewarnai Buah</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <style>
-    body, html { margin:0; padding:0; overflow:hidden; height:100%; font-family:sans-serif; background:#f0f0f0;}
-    #toolbar { position:fixed; bottom:0; left:0; right:0; height:88px; background:#fff; display:flex; align-items:center; justify-content:space-around; border-top:1px solid #ccc; }
-    #colorPicker { display:flex; gap:8px; }
-    .color { width:32px; height:32px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 2px rgba(0,0,0,.5); }
-    #brushSize { width:100px; }
-    #canvasContainer { position:absolute; top:0; bottom:88px; left:0; right:0; background:#fff; display:flex; align-items:center; justify-content:center; }
-    canvas { max-width:100%; max-height:100%; }
-    #fruitName { position:fixed; top:10px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,0.8); padding:5px 10px; border-radius:8px; font-weight:bold; }
-    #overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; }
-    #overlay h1 { font-size:24px; margin-bottom:20px; }
-    #overlay button { padding:10px 20px; font-size:18px; border:none; background:#4CAF50; color:#fff; border-radius:8px; cursor:pointer; }
+    :root { --toolbar-h: 88px; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    #gameContainer {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #toolbar {
+      height: var(--toolbar-h);
+      background: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+    }
+    .color-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      margin: 0 4px;
+    }
   </style>
 </head>
 <body>
-  <div id="overlay">
-    <h1>Selamat Datang di Game Mewarnai Buah</h1>
-    <button id="startBtn">Mulai Bermain</button>
+  <div id="gameContainer">
+    <canvas id="outlineCanvas"></canvas>
+    <canvas id="paintCanvas"></canvas>
   </div>
-  <audio id="bgMusic" src="assets/audio/background.mp3" loop></audio>
-  <div id="canvasContainer">
-    <canvas id="paintCanvas" width="800" height="600"></canvas>
-    <canvas id="outlineCanvas" width="800" height="600" style="position:absolute; left:0; top:0;"></canvas>
-  </div>
-  <div id="fruitName"></div>
   <div id="toolbar">
-    <button id="prevFruit">⏮️</button>
-    <button id="nextFruit">⏭️</button>
-    <button id="reset">🔄</button>
-    <div id="colorPicker"></div>
-    <input type="range" id="brushSize" min="5" max="50" value="10">
+    <button onclick="prevFruit()">Sebelumnya</button>
+    <span id="fruitName"></span>
+    <button onclick="nextFruit()">Berikutnya</button>
+    <input type="color" id="colorPicker" />
+    <button onclick="clearPaint()">Hapus</button>
   </div>
+
   <script>
-    const fruitList = [
-      {name:"Apel", src:"assets/images/apel.png"},
-      {name:"Jeruk", src:"assets/images/jeruk.png"},
-      {name:"Anggur", src:"assets/images/anggur.png"},
-      {name:"Kiwi Emas", src:"assets/images/kiwi_emas.png"},
-      {name:"Pisang", src:"assets/images/pisang.png"},
-      {name:"Pir", src:"assets/images/pir.png"},
-      {name:"Mangga", src:"assets/images/mangga.png"},
-      {name:"Nanas", src:"assets/images/nanas.png"},
-      {name:"Semangka", src:"assets/images/semangka.png"},
-      {name:"Pepaya", src:"assets/images/pepaya.png"},
-      {name:"Melon", src:"assets/images/melon.png"},
-      {name:"Alpukat", src:"assets/images/alpukat.png"},
-      {name:"Timun", src:"assets/images/timun.png"},
-      {name:"Terong", src:"assets/images/terong.png"},
-      {name:"Labu Siam", src:"assets/images/labu_siam.png"},
-      {name:"Cabai", src:"assets/images/cabai.png"},
-      {name:"Tomat", src:"assets/images/tomat.png"},
-      {name:"Paprika", src:"assets/images/paprika.png"},
-      {name:"Zukini", src:"assets/images/zukini.png"},
-      {name:"Kentang", src:"assets/images/kentang.png"},
-    ];
-    const paintCanvas = document.getElementById('paintCanvas');
-    const outlineCanvas = document.getElementById('outlineCanvas');
-    const paintCtx = paintCanvas.getContext('2d');
-    const outlineCtx = outlineCanvas.getContext('2d');
-    let drawing=false;
-    let brushColor='#000000';
-    let brushSize=10;
-    let currentFruitIndex=0;
+    const outlineCanvas=document.getElementById('outlineCanvas');
+    const paintCanvas=document.getElementById('paintCanvas');
+    const outlineCtx=outlineCanvas.getContext('2d');
+    const paintCtx=paintCanvas.getContext('2d');
     const fruitNameEl=document.getElementById('fruitName');
-    const outlineImg=new Image();
+    const colorPicker=document.getElementById('colorPicker');
+    let brushColor='#000000';
+    let brushSize=5;
+    let drawing=false;
+    let outlineImg=new Image();
+    let currentFruitIndex=0;
+    const fruitList=[
+      {name:"Apel", src:"assets/apel.png"},
+      {name:"Pisang", src:"assets/pisang.png"},
+      {name:"Jeruk", src:"assets/jeruk.png"}
+    ];
+
+    function resizeCanvas(){
+      outlineCanvas.width=paintCanvas.width=gameContainer.clientWidth;
+      outlineCanvas.height=paintCanvas.height=gameContainer.clientHeight;
+      drawOutline();
+    }
+    window.addEventListener('resize', resizeCanvas);
 
     function drawOutline(){
       outlineCtx.clearRect(0,0,outlineCanvas.width,outlineCanvas.height);
       outlineCtx.drawImage(outlineImg,0,0,outlineCanvas.width,outlineCanvas.height);
-    }
-    function clearPaint(){
-      paintCtx.clearRect(0,0,paintCanvas.width,paintCanvas.height);
-    }
-
-    // fungsi tambahan: buat clipping mask berdasarkan alpha buah
-    function applyClipMask() {
-      const tempCanvas = document.createElement("canvas");
-      tempCanvas.width = paintCanvas.width;
-      tempCanvas.height = paintCanvas.height;
-      const tempCtx = tempCanvas.getContext("2d");
-      tempCtx.drawImage(outlineImg, 0, 0, paintCanvas.width, paintCanvas.height);
-      const imgData = tempCtx.getImageData(0, 0, paintCanvas.width, paintCanvas.height);
-
-      paintCtx.restore?.();
-      paintCtx.save();
-      paintCtx.beginPath();
-      for (let y = 0; y < imgData.height; y++) {
-        for (let x = 0; x < imgData.width; x++) {
-          let idx = (y * imgData.width + x) * 4 + 3;
-          if (imgData.data[idx] > 0) {
-            paintCtx.rect(x, y, 1, 1);
-          }
-        }
-      }
-      paintCtx.clip();
     }
 
     function loadFruit(index){
       currentFruitIndex=(index+fruitList.length)%fruitList.length;
       fruitNameEl.textContent=fruitList[currentFruitIndex].name;
       clearPaint();
-      outlineImg.onload=()=>{
-        drawOutline();
-        applyClipMask(); // ← tambahan supaya mewarnai hanya di dalam buah
-      };
+      outlineImg.onload=()=>{ drawOutline(); };
       outlineImg.src=fruitList[currentFruitIndex].src;
     }
 
-    paintCanvas.addEventListener('mousedown', e=>{drawing=true; paint(e);});
-    paintCanvas.addEventListener('mouseup', ()=>{drawing=false; paintCtx.beginPath();});
-    paintCanvas.addEventListener('mousemove', paint);
+    function prevFruit(){ loadFruit(currentFruitIndex-1); }
+    function nextFruit(){ loadFruit(currentFruitIndex+1); }
+    function clearPaint(){ paintCtx.clearRect(0,0,paintCanvas.width,paintCanvas.height); }
+
+    colorPicker.addEventListener('input',e=>{ brushColor=e.target.value; });
+
+    paintCanvas.addEventListener('mousedown',startDraw);
+    paintCanvas.addEventListener('mousemove',paint);
+    paintCanvas.addEventListener('mouseup',endDraw);
+    paintCanvas.addEventListener('mouseout',endDraw);
+    paintCanvas.addEventListener('touchstart',e=>startDraw(e.touches[0]));
+    paintCanvas.addEventListener('touchmove',e=>{ e.preventDefault(); paint(e.touches[0]); });
+    paintCanvas.addEventListener('touchend',endDraw);
+
+    function startDraw(e){
+      drawing=true;
+      paintCtx.beginPath();
+      paint(e);
+    }
 
     function paint(e){
       if(!drawing) return;
@@ -130,25 +126,54 @@
       paintCtx.moveTo(x,y);
     }
 
-    document.getElementById('reset').onclick=()=>{clearPaint(); applyClipMask();};
-    document.getElementById('prevFruit').onclick=()=>loadFruit(currentFruitIndex-1);
-    document.getElementById('nextFruit').onclick=()=>loadFruit(currentFruitIndex+1);
+    // === Tambahan fungsi Masking ===
+    function applyMask() {
+      const maskCanvas = document.createElement('canvas');
+      const maskCtx = maskCanvas.getContext('2d');
+      maskCanvas.width = outlineCanvas.width;
+      maskCanvas.height = outlineCanvas.height;
 
-    const colors=["#000000","#FF0000","#00FF00","#0000FF","#FFFF00","#FF00FF","#00FFFF","#FFA500","#800080","#008000"];
-    const colorPicker=document.getElementById('colorPicker');
-    colors.forEach(c=>{
-      const d=document.createElement('div');
-      d.className='color'; d.style.background=c;
-      d.onclick=()=>{brushColor=c;};
-      colorPicker.appendChild(d);
-    });
-    document.getElementById('brushSize').oninput=e=>{brushSize=e.target.value;};
+      // gambar outline ke mask
+      maskCtx.drawImage(outlineCanvas, 0, 0);
 
-    document.getElementById('startBtn').onclick=()=>{
-      document.getElementById('overlay').style.display='none';
-      document.getElementById('bgMusic').play();
-      loadFruit(0);
-    };
+      // ambil data pixel
+      const imgData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+      const data = imgData.data;
+
+      // alpha: hanya area non-putih yg dipertahankan
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2];
+        if (r < 250 || g < 250 || b < 250) {
+          data[i+3] = 255; // penuh
+        } else {
+          data[i+3] = 0;   // transparan
+        }
+      }
+      maskCtx.putImageData(imgData, 0, 0);
+
+      // gabungkan dengan hasil coretan
+      const temp = document.createElement('canvas');
+      temp.width = paintCanvas.width;
+      temp.height = paintCanvas.height;
+      const tempCtx = temp.getContext('2d');
+      tempCtx.drawImage(paintCanvas, 0, 0);
+
+      tempCtx.globalCompositeOperation = 'destination-in';
+      tempCtx.drawImage(maskCanvas, 0, 0);
+
+      paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+      paintCtx.drawImage(temp, 0, 0);
+    }
+
+    function endDraw(e){
+      if(!drawing) return;
+      drawing=false;
+      paintCtx.closePath();
+      applyMask(); // <--- Tambahan supaya coretan tidak keluar dari buah
+    }
+
+    loadFruit(0);
+    resizeCanvas();
   </script>
 </body>
-  </html>
+</html>
