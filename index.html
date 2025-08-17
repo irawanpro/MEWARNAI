@@ -148,6 +148,9 @@
         dy = 0; dx = (stageW - drawW) / 2;  
       }  
       outlineCtx.drawImage(outlineImg, dx, dy, drawW, drawH);  
+
+      // masking saat gambar outline selesai ditampilkan
+      applyMask();
     }  
   
     function clearPaint() {  
@@ -159,12 +162,6 @@
       fruitNameEl.textContent = fruitList[currentFruitIndex].name;  
       clearPaint();  
       outlineImg.src = fruitList[currentFruitIndex].src;  
-
-      // masking saat ganti buah
-      outlineImg.onload = () => {
-        drawOutline();
-        applyMask();
-      };
     }  
   
     function buildPalette() {  
@@ -243,18 +240,4 @@
     window.addEventListener('mouseup',         endDraw);  
   
     function bindButton(el, handler) {  
-      el.addEventListener('click', (e)=>{ e.stopPropagation(); handler(); });  
-      el.addEventListener('touchend', (e)=>{ e.preventDefault(); e.stopPropagation(); handler(); },
-      bindButton(nextBtn, ()=> loadFruit(currentFruitIndex + 1));
-    bindButton(prevBtn, ()=> loadFruit(currentFruitIndex - 1));
-    bindButton(resetBtn,()=> clearPaint());
-
-    brushSizeEl.addEventListener('input', ()=> { brushSize = parseInt(brushSizeEl.value,10); });
-
-    buildPalette();
-    window.addEventListener('resize', fitCanvases);
-    fitCanvases();
-    loadFruit(0);
-  </script>
-</body>
-</html>
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); handler(); });
