@@ -3,7 +3,6 @@
 <head>
   <meta charset="utf-8" />
   <title>Game Mewarnai Buah</title>
-  <!-- Tambahan viewport-fit=cover untuk layar penuh di mobile modern -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <style>
     /* --- CSS asli kamu tetap sama + tambahan anti scroll/zoom & safe-area --- */
@@ -45,7 +44,6 @@
 </head>
 <body>
 
-  <!-- Overlay instruksi -->
   <div id="instructionOverlay">
     <h1 class="float" tabindex="0">Selamat Datang di Game Mewarnai Buah!</h1>
     <p>Created by : </p>
@@ -53,10 +51,8 @@
     <button id="startGameBtn">Mulai Bermain</button>
   </div>
 
-  <!-- Overlay putar perangkat (opsional) -->
   <div id="rotateOverlay">Silakan putar perangkat ke mode potret (portrait).</div>
 
-  <!-- Tombol atas -->
   <div id="topbar">
     <button id="prevBtn" class="btn">Prev</button>
     <button id="resetBtn" class="btn" style="background:#d32f2f">Reset</button>
@@ -64,20 +60,17 @@
   </div>
   <div id="fruitName">Apel</div>
 
-  <!-- Area gambar -->
   <div id="stage">
     <canvas id="paintCanvas"></canvas>
     <canvas id="outlineCanvas"></canvas>
   </div>
 
-  <!-- Toolbar bawah -->
   <div id="toolbar">
     <div style="font-weight:700; padding:0 6px;">Warna</div>
     <div id="palette" aria-label="Palet Warna"></div>
     <input id="brushSize" type="range" min="6" max="48" step="2" value="18" />
   </div>
 
-  <!-- Tambahan audio background -->
   <audio id="bgMusic" loop>
     <source src="assets/audio/background.mp3" type="audio/mpeg">
   </audio>
@@ -274,17 +267,52 @@
       paintCtx.moveTo(p.x, p.y);
       lastX = p.x; lastY = p.y;
     }
+    
+    // START OF MODIFIED CODE
     function moveDraw(e) {
       if (!drawing) return;
+      
       const p = getPos(e);
+    
+      const dist = Math.hypot(p.x - lastX, p.y - lastY);
+      const angle = Math.atan2(p.y - lastY, p.x - lastX);
+    
       paintCtx.lineCap = 'round';
       paintCtx.lineJoin = 'round';
       paintCtx.strokeStyle = brushColor;
       paintCtx.lineWidth = brushSize;
-      paintCtx.lineTo(p.x, p.y);
+      
+      paintCtx.beginPath();
+      paintCtx.moveTo(lastX, lastY);
+    
+      for (let i = 0; i < dist; i += brushSize / 4) {
+        const checkX = lastX + Math.cos(angle) * i;
+        const checkY = lastY + Math.sin(angle) * i;
+    
+        if (checkX < 0 || checkX >= outlineCanvas.width || checkY < 0 || checkY >= outlineCanvas.height) {
+          paintCtx.stroke();
+          paintCtx.beginPath();
+          paintCtx.moveTo(checkX, checkY);
+          continue;
+        }
+
+        const outlineAlphaData = outlineCtx.getImageData(checkX, checkY, 1, 1).data;
+        const alphaValue = outlineAlphaData[3];
+    
+        if (alphaValue < 50) {
+          paintCtx.lineTo(checkX, checkY);
+        } else {
+          paintCtx.stroke();
+          paintCtx.beginPath();
+          paintCtx.moveTo(checkX, checkY);
+        }
+      }
       paintCtx.stroke();
+      
       lastX = p.x; lastY = p.y;
     }
+    // END OF MODIFIED CODE
+
     function endDraw(e) {
       if (!drawing) return;
       drawing = false;
