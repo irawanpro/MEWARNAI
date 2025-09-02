@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>Game Mewarnai Buah</title>
+  <!-- Tambahan viewport-fit=cover untuk layar penuh di mobile modern -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <style>
     /* --- CSS asli kamu tetap sama + tambahan anti scroll/zoom & safe-area --- */
@@ -44,6 +45,7 @@
 </head>
 <body>
 
+  <!-- Overlay instruksi -->
   <div id="instructionOverlay">
     <h1 class="float" tabindex="0">Selamat Datang di Game Mewarnai Buah!</h1>
     <p>Created by : </p>
@@ -51,8 +53,10 @@
     <button id="startGameBtn">Mulai Bermain</button>
   </div>
 
+  <!-- Overlay putar perangkat (opsional) -->
   <div id="rotateOverlay">Silakan putar perangkat ke mode potret (portrait).</div>
 
+  <!-- Tombol atas -->
   <div id="topbar">
     <button id="prevBtn" class="btn">Prev</button>
     <button id="resetBtn" class="btn" style="background:#d32f2f">Reset</button>
@@ -60,17 +64,20 @@
   </div>
   <div id="fruitName">Apel</div>
 
+  <!-- Area gambar -->
   <div id="stage">
     <canvas id="paintCanvas"></canvas>
     <canvas id="outlineCanvas"></canvas>
   </div>
 
+  <!-- Toolbar bawah -->
   <div id="toolbar">
     <div style="font-weight:700; padding:0 6px;">Warna</div>
     <div id="palette" aria-label="Palet Warna"></div>
     <input id="brushSize" type="range" min="6" max="48" step="2" value="18" />
   </div>
 
+  <!-- Tambahan audio background -->
   <audio id="bgMusic" loop>
     <source src="assets/audio/background.mp3" type="audio/mpeg">
   </audio>
@@ -172,7 +179,6 @@
     let lastX = 0, lastY = 0;
     let brushColor = '#ff3b30';
     let brushSize  = parseInt(brushSizeEl.value, 10);
-    let cachedOutlineData = null; // Menyimpan data piksel outline untuk efisiensi
 
     const paletteColors = [
       '#ff3b30','#ff9500','#ffcc00','#34c759','#0a84ff','#af52de',
@@ -215,10 +221,6 @@
         dy = 0; dx = (stageW - drawW) / 2;
       }
       outlineCtx.drawImage(outlineImg, dx, dy, drawW, drawH);
-      
-      // Setelah gambar digambar, simpan data pikselnya di memori
-      // Gunakan dpr yang sama untuk mendapatkan data piksel
-      cachedOutlineData = outlineCtx.getImageData(0, 0, outlineCanvas.width, outlineCanvas.height);
     }
 
     function clearPaint() {
@@ -253,68 +255,36 @@
 
     function getPos(e) {
       const rect = paintCanvas.getBoundingClientRect();
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
       let x, y;
       if (e.touches && e.touches.length) {
-        x = (e.touches[0].clientX - rect.left) * dpr;
-        y = (e.touches[0].clientY - rect.top) * dpr;
+        x = e.touches[0].clientX - rect.left;
+        y = e.touches[0].clientY - rect.top;
       } else {
-        x = (e.clientX - rect.left) * dpr;
-        y = (e.clientY - rect.top) * dpr;
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
       }
       return { x, y };
     }
 
-    function isInsideOutline(x, y) {
-      if (!cachedOutlineData) return true; // fallback
-      
-      const idx = (Math.floor(y) * cachedOutlineData.width + Math.floor(x)) * 4;
-      if (idx < 0 || idx >= cachedOutlineData.data.length) return false;
-      
-      const alpha = cachedOutlineData.data[idx + 3];
-      return alpha < 50; // alpha rendah berarti transparan (di dalam outline)
-    }
-
-    // --- MODIFIKASI FUNGSI STARTDRAW DAN MOVEDRAW ---
-
     function startDraw(e) {
       e.preventDefault();
+      drawing = true;
+      paintCtx.beginPath();
       const p = getPos(e);
-      if (isInsideOutline(p.x, p.y)) {
-        drawing = true;
-        paintCtx.beginPath();
-        paintCtx.moveTo(p.x, p.y);
-        lastX = p.x;
-        lastY = p.y;
-      }
+      paintCtx.moveTo(p.x, p.y);
+      lastX = p.x; lastY = p.y;
     }
-    
     function moveDraw(e) {
       if (!drawing) return;
-      
       const p = getPos(e);
-    
-      // Cek apakah posisi baru masih di dalam batas
-      if (isInsideOutline(p.x, p.y)) {
-        // Jika iya, gambar garis dari posisi terakhir ke posisi saat ini
-        paintCtx.lineCap = 'round';
-        paintCtx.lineJoin = 'round';
-        paintCtx.strokeStyle = brushColor;
-        paintCtx.lineWidth = brushSize;
-        paintCtx.lineTo(p.x, p.y);
-        paintCtx.stroke();
-      } else {
-        // Jika tidak, hentikan drawing
-        drawing = false;
-        paintCtx.closePath();
-      }
-      
-      lastX = p.x;
-      lastY = p.y;
+      paintCtx.lineCap = 'round';
+      paintCtx.lineJoin = 'round';
+      paintCtx.strokeStyle = brushColor;
+      paintCtx.lineWidth = brushSize;
+      paintCtx.lineTo(p.x, p.y);
+      paintCtx.stroke();
+      lastX = p.x; lastY = p.y;
     }
-
-    // --- AKHIR MODIFIKASI FUNGSI ---
-    
     function endDraw(e) {
       if (!drawing) return;
       drawing = false;
